@@ -13,10 +13,11 @@
             "justMyCode": true
         },
         {
-            "name": "Python: OpenAI Module",
+            "name": "Python: Example",
             "type": "python",
             "request": "launch",
-            "module": "coder.openai",
+            "cwd": "${workspaceFolder}/src",
+            "module": "gpt_commands.example",
             "justMyCode": true
         },
     ]
