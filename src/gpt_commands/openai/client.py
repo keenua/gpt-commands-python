@@ -9,7 +9,7 @@ from aiohttp import ClientSession, StreamReader
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 
-from gpt_commands.openai.introspection import get_functions
+from gpt_commands.openai.introspection import Manager, create_manager
 
 
 class Role(str, Enum):
@@ -50,18 +50,16 @@ class FunctionCall:
 @dataclass
 class FunctionExecution:
     name: str
-    arguments: Optional[dict] = None
+    arguments: dict[str, str]
 
-    def execute(self, manager: object) -> Optional[str]:
-        function = getattr(manager, self.name, None)
-        if function:
-            try:
-                data = function(**self.arguments)
-            except Exception as e:
-                raise Exception("Failed to execute function") from e
-            return None if data is None else json.dumps(data)
-        else:
-            return None
+    def execute(self, manager: Manager) -> Optional[str]:
+        return manager.execute(self.name, self.arguments)
+    
+    def has_return(self, manager: Manager) -> bool:
+        function = manager.get_function(self.name)
+        if function is None:
+            return False
+        return function.has_return
 
 
 @dataclass_json
@@ -106,7 +104,7 @@ class ResponseData:
 
     def get_function_execution(self) -> Optional[FunctionExecution]:
         if self.ready and self.function_name and self.function_arguments:
-            arguments = json.loads(self.function_arguments)
+            arguments = {key: json.dumps(value) for key, value in json.loads(self.function_arguments).items()}
             return FunctionExecution(self.function_name, arguments)
         else:
             return None
@@ -199,13 +197,13 @@ class GPTCommandsClient:
     ) -> AsyncGenerator[str, None]:
         self.messages.append(message_to_send)
 
-        functions = get_functions(manager)
+        manager_wrapper = create_manager(manager)
         messages = [message.to_request() for message in self.messages]
 
         body = {
             "model": self.model,
             "messages": messages,
-            "functions": [function.json_schema() for function in functions],
+            "functions": [function.json_schema() for function in manager_wrapper.functions.values()],
             "max_tokens": self.max_tokens,
             "n": 1,
             "temperature": self.temperature,
@@ -243,9 +241,9 @@ class GPTCommandsClient:
 
             if call:
                 self.logger.info(f"Calling function: {call}")
-                result = call.execute(manager)
-                if result is not None:
-                    function_result = Message(Role.FUNCTION, result, call.name)
+                result = call.execute(manager_wrapper)
+                if call.has_return(manager_wrapper):
+                    function_result = Message(Role.FUNCTION, result or "null", call.name)
                     async for data in self.__send_message(function_result, manager):
                         yield data
 

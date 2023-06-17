@@ -44,10 +44,6 @@ class Game:
 
 Make sure to annotate your code with type hints and doc strings. This is what the module uses to "explain" the functions to GPT.
 
-
-**Note that only primitive data types are currently supported (`str`, `int`, `float`, `bool`). Other types of arguments will probably not work.**
-
-
 Then pass an instance of your class to `GPTCommandsClient` like so and start prompting:
 
 ```python
@@ -62,6 +58,18 @@ async with GPTCommandsClient(model, system_prompt) as client:
 ```
 
 ![Prompts](./images/prompts.jpg)
+
+List of currently supported types for parameters:
+- `bool`
+- `int`
+- `float`
+- `str`
+- `List[T]`
+- `Dict[str, T]`
+- `Optional[T]`
+- `@dataclass` marked classes with `JsonSchemaMixin`
+
+See [example](./src/gpt_commands/example/__main__.py) for a full example.
 
 ## Installation
 

@@ -1,12 +1,30 @@
 from asyncio import run
+from dataclasses import dataclass
 from logging import getLogger
-from typing import List
+from typing import List, Optional
+
+from dataclasses_jsonschema import JsonSchemaMixin
 
 import gpt_commands.openai.utils
 from gpt_commands.openai import GPTCommandsClient
 
 
+@dataclass
+class Point(JsonSchemaMixin):
+    "A 2D point"
+    x: float
+    y: float
+
+@dataclass
+class Marker(JsonSchemaMixin):
+    "A marker"
+    name: str
+    point: Point
+
 class Game:
+    def __init__(self):
+        self.markers: List[Marker] = []
+
     def get_inventory(self, character: str, max_items: int) -> List[str]:
         """
         Get inventory of a character
@@ -40,6 +58,46 @@ class Game:
             target (str): The target to disarm
         """
         print(f"[COMMAND] Expelliarmus {target}!")
+
+    def get_location_coordinates(self, location: Optional[str] = None) -> Point:
+        """
+        Get the coordinates of a location
+
+        Args:
+            location (Optional[str], optional): The location to get the coordinates of. One of: 'Hogwarts', 'Diagon Alley', 'Forbidden Forest'. If None, defaults to current location.
+
+        Returns:
+            Point: The coordinates of the location
+        """
+
+        if location == "Hogwarts":
+            return Point(x=0, y=0)
+        elif location == "Diagon Alley":
+            return Point(x=1, y=1)
+        elif location == "Forbidden Forest":
+            return Point(x=2, y=2)
+
+        return Point(x=100, y=100)
+    
+    def get_makers(self) -> List[Marker]:
+        """
+        Get the markers on the map
+
+        Returns:
+            List[Marker]: The markers
+        """
+        return self.markers
+
+    def set_a_mark_on_the_map(self, marker: Marker):
+        """
+        Set a mark on the map
+
+        Args:
+            marker (Marker): The mark to set
+        """
+        print(f"[COMMAND] Set a mark on the map at {marker.point} with {marker.name}!")
+
+        self.markers.append(marker)
 
 
 async def main():
