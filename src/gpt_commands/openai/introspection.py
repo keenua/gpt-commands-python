@@ -47,14 +47,14 @@ def decode_json(json_value: str, hint_type: type) -> object:
                 item_value if isinstance(item_value, str) else json.dumps(item_value),
                 item_type,
             )
-            for item_value in json.loads(json_value)
+            for item_value in json.loads(json_value, strict=False)
         ]
     elif typing.get_origin(hint_type) == dict:
         key_type, value_type = typing.get_args(hint_type)
         if key_type != str:
             raise UnsupportedDictionaryKeyTypeException(key_type.__name__)
 
-        dictionary: dict = json.loads(json_value)
+        dictionary: dict = json.loads(json_value, strict=False)
         return {
             key: decode_json(
                 value if isinstance(value, str) else json.dumps(value), value_type
@@ -62,7 +62,7 @@ def decode_json(json_value: str, hint_type: type) -> object:
             for key, value in dictionary.items()
         }
     elif hint_type == str:
-        return json.loads(json_value) if json_value.startswith('"') else json_value
+        return json.loads(json_value, strict=False) if json_value.startswith('"') else json_value
     elif hint_type == int:
         return int(json_value)
     elif hint_type == float:

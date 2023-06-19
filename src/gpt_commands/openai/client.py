@@ -104,7 +104,7 @@ class ResponseData:
 
     def get_function_execution(self) -> Optional[FunctionExecution]:
         if self.ready and self.function_name and self.function_arguments:
-            arguments = {key: json.dumps(value) for key, value in json.loads(self.function_arguments).items()}
+            arguments = {key: json.dumps(value) for key, value in json.loads(self.function_arguments, strict=False).items()}
             return FunctionExecution(self.function_name, arguments)
         else:
             return None
@@ -220,7 +220,7 @@ class GPTCommandsClient:
                         f"OpenAI API returned status code {resp.status}: {await resp.text()}"
                     )
                 async for data in self.__parse_stream_async(resp.content):
-                    json_data = json.loads(data)
+                    json_data = json.loads(data, strict=False)
 
                     if json_data.get("error"):
                         raise Exception(f"OpenAI API returned error: {json_data['error']}")
@@ -246,10 +246,9 @@ class GPTCommandsClient:
             if call:
                 self.logger.info(f"Calling function: {call}")
                 result = call.execute(manager_wrapper)
-                if call.has_return(manager_wrapper):
-                    function_result = Message(Role.FUNCTION, result or "null", call.name)
-                    async for data in self.__send_message(function_result, manager):
-                        yield data
+                function_result = Message(Role.FUNCTION, result or "true", call.name)
+                async for data in self.__send_message(function_result, manager):
+                    yield data
 
     async def chat_stream(self, prompt: str, manager: object) -> AsyncGenerator[str, None]:
         """
