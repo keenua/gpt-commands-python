@@ -62,7 +62,7 @@ def decode_json(json_value: str, hint_type: type) -> object:
             for key, value in dictionary.items()
         }
     elif hint_type == str:
-        return json_value
+        return json.loads(json_value) if json_value.startswith('"') else json_value
     elif hint_type == int:
         return int(json_value)
     elif hint_type == float:

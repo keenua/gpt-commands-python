@@ -161,6 +161,7 @@ def test_type_to_json_schema():
 def test_decode_json():
     # Test string type
     assert decode_json("hello", str) == "hello"
+    assert decode_json('"hello"', str) == "hello"
     assert decode_json("123", str) == "123"
     assert decode_json("123.456", str) == "123.456"
     assert decode_json("true", str) == "true"
