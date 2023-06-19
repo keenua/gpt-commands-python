@@ -221,6 +221,10 @@ class GPTCommandsClient:
                     )
                 async for data in self.__parse_stream_async(resp.content):
                     json_data = json.loads(data)
+
+                    if json_data.get("error"):
+                        raise Exception(f"OpenAI API returned error: {json_data['error']}")
+
                     chunk: ChatCompletionChunk = ChatCompletionChunk.from_dict(json_data)  # type: ignore
                     processed_chunk = self.__process_chunk(chunk, response)
                     if processed_chunk.delta_text:
