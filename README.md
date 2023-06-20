@@ -57,7 +57,7 @@ async with GPTCommandsClient(model, system_prompt) as client:
         print()
 ```
 
-![Prompts](./images/prompts.jpg)
+![Prompts](https://raw.githubusercontent.com/keenua/gpt-commands-python/main/images/prompts.jpg)
 
 List of currently supported types for parameters:
 - `bool`
@@ -69,20 +69,15 @@ List of currently supported types for parameters:
 - `Optional[T]`
 - `@dataclass` marked classes with `JsonSchemaMixin`
 
-See [example](./src/gpt_commands/example/__main__.py) for a full example.
+See [example](https://github.com/keenua/gpt-commands-python/blob/main/examples/game/__main__.py) for a full example.
 
 ## Installation
 
-1.  Create environment
-
-    Create a new conda environment from `environment.yml` and activate it:
+1.  Install the package
 
     ```shell
-    conda env create -f environment.yml
-    conda activate gptcommands
+    pip install gpt-commands-python
     ```
-
-    You might need to [install conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) first.
 
 1.  Set environment variables
 
@@ -95,9 +90,10 @@ See [example](./src/gpt_commands/example/__main__.py) for a full example.
     OPENAI_ORGANIZATION=org-XXXXXXXXXXXXXXXXXXXXXXXX
     ```
 
+    You can also pass these values as arguments to `GPTCommandsClient` constructor or set them as environment variables.
+
 ## Running the example
 
 ```shell
-cd src
-python -m gptcommands.example
+python -m examples.game
 ```

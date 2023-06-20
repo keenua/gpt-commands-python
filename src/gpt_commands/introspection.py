@@ -2,42 +2,47 @@ import inspect
 import json
 import typing
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from inspect import getmembers, ismethod, signature
+from typing import Any, Dict, Optional, Union
 
 from dataclasses_jsonschema import JsonSchemaMixin
 from docstring_parser import parse
-from inspect import signature, getmembers, ismethod
 
 
 class UnsupportedTypeException(Exception):
     def __init__(self, type: type):
         super().__init__(
-            f"Unsupported type: {type.__name__}. Only primitive types, lists, dictionaries, Optional and JsonSchemaMixin dataclasses are supported."
+            f"Unsupported type: {type_name(type)}. Only primitive types, lists, dictionaries, Optional and JsonSchemaMixin dataclasses are supported."
         )
 
 
 class UnsupportedDictionaryKeyTypeException(Exception):
     def __init__(self, key_type: type):
         super().__init__(
-            f"Unsupported dictionary key type: {key_type.__name__}. Only string keys are supported."
+            f"Unsupported dictionary key type: {type_name(key_type)}. Only string keys are supported."
         )
 
 
+def is_optional(hint_type: type) -> bool:
+    return typing.get_origin(hint_type) == Union and type(None) in typing.get_args(
+        hint_type
+    )
+
+
+def type_name(hint_type: type) -> str:
+    return hint_type.__name__ if getattr(hint_type, "__name__") else str(hint_type)
+
+
 def decode_json(json_value: str, hint_type: type) -> object:
-    if typing.get_origin(hint_type) == Union:
-        if type(None) in typing.get_args(hint_type):
-            if json_value is None or json_value == "null":
-                return None
-            else:
-                non_none_type = [
-                    t for t in typing.get_args(hint_type) if t != type(None)
-                ]
-                if len(non_none_type) != 1:
-                    raise UnsupportedTypeException(hint_type)
+    if is_optional(hint_type):
+        if json_value is None or json_value == "null":
+            return None
+        else:
+            non_none_type = [t for t in typing.get_args(hint_type) if t != type(None)]
+            if len(non_none_type) != 1:
+                raise UnsupportedTypeException(hint_type)
 
-                return decode_json(json_value, typing.get_args(hint_type)[0])
-
-        raise UnsupportedTypeException(hint_type)
+            return decode_json(json_value, typing.get_args(hint_type)[0])
     elif issubclass(hint_type, JsonSchemaMixin):
         return hint_type.from_json(json_value)
     elif typing.get_origin(hint_type) == list:
@@ -52,7 +57,7 @@ def decode_json(json_value: str, hint_type: type) -> object:
     elif typing.get_origin(hint_type) == dict:
         key_type, value_type = typing.get_args(hint_type)
         if key_type != str:
-            raise UnsupportedDictionaryKeyTypeException(key_type.__name__)
+            raise UnsupportedDictionaryKeyTypeException(key_type)
 
         dictionary: dict = json.loads(json_value, strict=False)
         return {
@@ -62,7 +67,11 @@ def decode_json(json_value: str, hint_type: type) -> object:
             for key, value in dictionary.items()
         }
     elif hint_type == str:
-        return json.loads(json_value, strict=False) if json_value.startswith('"') else json_value
+        return (
+            json.loads(json_value, strict=False)
+            if json_value.startswith('"')
+            else json_value
+        )
     elif hint_type == int:
         return int(json_value)
     elif hint_type == float:
@@ -74,10 +83,7 @@ def decode_json(json_value: str, hint_type: type) -> object:
 
 
 def type_to_json_schema(hint_type: type) -> dict:
-    if typing.get_origin(hint_type) == typing.Union:
-        if hint_type.__name__ != "Optional":
-            raise UnsupportedTypeException(hint_type)
-        
+    if is_optional(hint_type):
         actual_type = typing.get_args(hint_type)[0]
 
         return type_to_json_schema(actual_type)
@@ -134,7 +140,7 @@ class Parameter:
 class Function:
     name: str
     description: Optional[str]
-    parameters: dict[str, Parameter]
+    parameters: Dict[str, Parameter]
     has_return: bool
 
     def json_schema(self):
@@ -159,9 +165,9 @@ class Function:
 @dataclass
 class Manager:
     object: object
-    functions: dict[str, Function]
+    functions: Dict[str, Function]
 
-    def execute(self, function_name: str, arguments: dict[str, Any]) -> Optional[str]:
+    def execute(self, function_name: str, arguments: Dict[str, Any]) -> Optional[str]:
         function = getattr(self.object, function_name, None)
         function_definition = self.functions[function_name]
 
@@ -182,7 +188,7 @@ class Manager:
                     raise Exception(
                         f"Missing argument in {function_name}: {parameter.name}"
                     )
-                
+
                 arguments[parameter.name] = parameter.deserialize(
                     arguments[parameter.name]
                 )
@@ -199,8 +205,9 @@ class Manager:
     def get_function(self, function_name: str) -> Optional[Function]:
         return self.functions.get(function_name, None)
 
+
 def create_manager(object: object) -> Manager:
-    functions: dict[str, Function] = {}
+    functions: Dict[str, Function] = {}
 
     for name, method in getmembers(object, predicate=ismethod):
         if not name.startswith("_"):
@@ -208,7 +215,7 @@ def create_manager(object: object) -> Manager:
                 raise Exception(f"Missing docstring for function {name}")
 
             docstring = parse(method.__doc__)
-            parameters: dict[str, Parameter] = {}
+            parameters: Dict[str, Parameter] = {}
             docstring_params = {p.arg_name: p for p in docstring.params} or {}
             sign = signature(method)
 

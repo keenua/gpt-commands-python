@@ -1,15 +1,16 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pytest
-from gpt_commands.openai.introspection import (
+from dataclasses_jsonschema import JsonSchemaMixin
+
+from gpt_commands.introspection import (
     UnsupportedDictionaryKeyTypeException,
     UnsupportedTypeException,
     create_manager,
-    type_to_json_schema,
     decode_json,
+    type_to_json_schema,
 )
-from dataclasses_jsonschema import JsonSchemaMixin
 
 
 @dataclass
@@ -25,7 +26,7 @@ class Plane(JsonSchemaMixin):
     origin: Point
     normal: Point
     selected_points: List[Point]
-    label_to_point: dict[str, Point]
+    label_to_point: Dict[str, Point]
 
 
 @dataclass
@@ -53,25 +54,25 @@ def test_type_to_json_schema():
     assert type_to_json_schema(bool) == {"type": "boolean"}
 
     # Test list type
-    assert type_to_json_schema(list[int]) == {
+    assert type_to_json_schema(List[int]) == {
         "type": "array",
         "items": {"type": "integer"},
     }
 
     # Test nested list type
-    assert type_to_json_schema(list[list[int]]) == {
+    assert type_to_json_schema(List[List[int]]) == {
         "type": "array",
         "items": {"type": "array", "items": {"type": "integer"}},
     }
 
     # Test dictionary type
-    assert type_to_json_schema(dict[str, int]) == {
+    assert type_to_json_schema(Dict[str, int]) == {
         "type": "object",
         "additionalProperties": {"type": "integer"},
     }
 
     # Test nested dictionary type
-    assert type_to_json_schema(dict[str, dict[str, list[int]]]) == {
+    assert type_to_json_schema(Dict[str, Dict[str, List[int]]]) == {
         "type": "object",
         "additionalProperties": {
             "type": "object",
@@ -84,7 +85,7 @@ def test_type_to_json_schema():
         UnsupportedDictionaryKeyTypeException,
         match="Unsupported dictionary key type: int. Only string keys are supported.",
     ):
-        type_to_json_schema(dict[int, str])
+        type_to_json_schema(Dict[int, str])
 
     # Test unsupported type
     with pytest.raises(
@@ -177,41 +178,41 @@ def test_decode_json():
     assert decode_json("false", bool) == False
 
     # Test list type
-    assert decode_json("[1, 2, 3]", list[int]) == [1, 2, 3]
-    assert decode_json("[1, 2, 3]", list[float]) == [1, 2, 3]
-    assert decode_json('["1", "2", "3"]', list[str]) == ["1", "2", "3"]
+    assert decode_json("[1, 2, 3]", List[int]) == [1, 2, 3]
+    assert decode_json("[1, 2, 3]", List[float]) == [1, 2, 3]
+    assert decode_json('["1", "2", "3"]', List[str]) == ["1", "2", "3"]
 
     # Test nested list type
-    assert decode_json("[[1, 2], [3, 4]]", list[list[int]]) == [[1, 2], [3, 4]]
-    assert decode_json("[[1, 2], [3, 4]]", list[list[float]]) == [[1, 2], [3, 4]]
-    assert decode_json('[["1", "2"], ["3", "4"]]', list[list[str]]) == [
+    assert decode_json("[[1, 2], [3, 4]]", List[List[int]]) == [[1, 2], [3, 4]]
+    assert decode_json("[[1, 2], [3, 4]]", List[List[float]]) == [[1, 2], [3, 4]]
+    assert decode_json('[["1", "2"], ["3", "4"]]', List[List[str]]) == [
         ["1", "2"],
         ["3", "4"],
     ]
 
     # Test dictionary type
-    assert decode_json('{"a": 1, "b": 2}', dict[str, int]) == {"a": 1, "b": 2}
-    assert decode_json('{"a": 1, "b": 2}', dict[str, float]) == {"a": 1, "b": 2}
-    assert decode_json('{"a": "1", "b": "2"}', dict[str, str]) == {"a": "1", "b": "2"}
-    assert decode_json('{"a": true, "b": false}', dict[str, bool]) == {
+    assert decode_json('{"a": 1, "b": 2}', Dict[str, int]) == {"a": 1, "b": 2}
+    assert decode_json('{"a": 1, "b": 2}', Dict[str, float]) == {"a": 1, "b": 2}
+    assert decode_json('{"a": "1", "b": "2"}', Dict[str, str]) == {"a": "1", "b": "2"}
+    assert decode_json('{"a": true, "b": false}', Dict[str, bool]) == {
         "a": True,
         "b": False,
     }
-    assert decode_json('{"a": [1,2,3], "b": [4,5,6]}', dict[str, list[int]]) == {
+    assert decode_json('{"a": [1,2,3], "b": [4,5,6]}', Dict[str, List[int]]) == {
         "a": [1, 2, 3],
         "b": [4, 5, 6],
     }
 
     # Test nested dictionary type
     assert decode_json(
-        '{"a": {"b": [1,2,3]}, "c": {"d": [4,5,6]}}', dict[str, dict[str, list[int]]]
+        '{"a": {"b": [1,2,3]}, "c": {"d": [4,5,6]}}', Dict[str, Dict[str, List[int]]]
     ) == {"a": {"b": [1, 2, 3]}, "c": {"d": [4, 5, 6]}}
     assert decode_json(
-        '{"a": {"b": [1,2,3]}, "c": {"d": [4,5,6]}}', dict[str, dict[str, list[float]]]
+        '{"a": {"b": [1,2,3]}, "c": {"d": [4,5,6]}}', Dict[str, Dict[str, List[float]]]
     ) == {"a": {"b": [1, 2, 3]}, "c": {"d": [4, 5, 6]}}
     assert decode_json(
         '{"a": {"b": ["1","2","3"]}, "c": {"d": ["4","5","6"]}}',
-        dict[str, dict[str, list[str]]],
+        Dict[str, Dict[str, List[str]]],
     ) == {"a": {"b": ["1", "2", "3"]}, "c": {"d": ["4", "5", "6"]}}
 
     # Test dataclass type
@@ -243,16 +244,16 @@ def test_decode_json():
     assert decode_json("null", Optional[float]) == None
     assert decode_json("null", Optional[str]) == None
     assert decode_json("null", Optional[bool]) == None
-    assert decode_json("null", Optional[list[int]]) == None
-    assert decode_json("null", Optional[list[float]]) == None
-    assert decode_json("null", Optional[list[str]]) == None
-    assert decode_json("null", Optional[dict[str, int]]) == None
-    assert decode_json("null", Optional[dict[str, float]]) == None
-    assert decode_json("null", Optional[dict[str, str]]) == None
-    assert decode_json("null", Optional[dict[str, bool]]) == None
-    assert decode_json("null", Optional[dict[str, list[int]]]) == None
-    assert decode_json("null", Optional[dict[str, list[float]]]) == None
-    assert decode_json("null", Optional[dict[str, list[str]]]) == None
+    assert decode_json("null", Optional[List[int]]) == None
+    assert decode_json("null", Optional[List[float]]) == None
+    assert decode_json("null", Optional[List[str]]) == None
+    assert decode_json("null", Optional[Dict[str, int]]) == None
+    assert decode_json("null", Optional[Dict[str, float]]) == None
+    assert decode_json("null", Optional[Dict[str, str]]) == None
+    assert decode_json("null", Optional[Dict[str, bool]]) == None
+    assert decode_json("null", Optional[Dict[str, List[int]]]) == None
+    assert decode_json("null", Optional[Dict[str, List[float]]]) == None
+    assert decode_json("null", Optional[Dict[str, List[str]]]) == None
     assert decode_json("null", Optional[Point]) == None
     assert decode_json("null", Optional[Plane]) == None
     assert decode_json("asdf", Optional[str]) == "asdf"
@@ -260,33 +261,33 @@ def test_decode_json():
     assert decode_json("123.456", Optional[float]) == 123.456
     assert decode_json("true", Optional[bool]) == True
     assert decode_json("false", Optional[bool]) == False
-    assert decode_json("[1,2,3]", Optional[list[int]]) == [1, 2, 3]
-    assert decode_json("[1,2,3]", Optional[list[float]]) == [1, 2, 3]
-    assert decode_json('["1","2","3"]', Optional[list[str]]) == ["1", "2", "3"]
-    assert decode_json('{"a": 1, "b": 2}', Optional[dict[str, int]]) == {"a": 1, "b": 2}
-    assert decode_json('{"a": 1, "b": 2}', Optional[dict[str, float]]) == {
+    assert decode_json("[1,2,3]", Optional[List[int]]) == [1, 2, 3]
+    assert decode_json("[1,2,3]", Optional[List[float]]) == [1, 2, 3]
+    assert decode_json('["1","2","3"]', Optional[List[str]]) == ["1", "2", "3"]
+    assert decode_json('{"a": 1, "b": 2}', Optional[Dict[str, int]]) == {"a": 1, "b": 2}
+    assert decode_json('{"a": 1, "b": 2}', Optional[Dict[str, float]]) == {
         "a": 1,
         "b": 2,
     }
-    assert decode_json('{"a": "1", "b": "2"}', Optional[dict[str, str]]) == {
+    assert decode_json('{"a": "1", "b": "2"}', Optional[Dict[str, str]]) == {
         "a": "1",
         "b": "2",
     }
-    assert decode_json('{"a": true, "b": false}', Optional[dict[str, bool]]) == {
+    assert decode_json('{"a": true, "b": false}', Optional[Dict[str, bool]]) == {
         "a": True,
         "b": False,
     }
     assert decode_json(
-        '{"a": [1,2,3], "b": [4,5,6]}', Optional[dict[str, list[int]]]
+        '{"a": [1,2,3], "b": [4,5,6]}', Optional[Dict[str, List[int]]]
     ) == {
         "a": [1, 2, 3],
         "b": [4, 5, 6],
     }
     assert decode_json(
-        '{"a": [1,2,3], "b": [4,5,6]}', Optional[dict[str, list[float]]]
+        '{"a": [1,2,3], "b": [4,5,6]}', Optional[Dict[str, List[float]]]
     ) == {"a": [1, 2, 3], "b": [4, 5, 6]}
     assert decode_json(
-        '{"a": ["1","2","3"], "b": ["4","5","6"]}', Optional[dict[str, list[str]]]
+        '{"a": ["1","2","3"], "b": ["4","5","6"]}', Optional[Dict[str, List[str]]]
     ) == {"a": ["1", "2", "3"], "b": ["4", "5", "6"]}
     assert decode_json('{"x": 1, "y": 2}', Optional[Point]) == Point(x=1, y=2)
     assert (
@@ -400,7 +401,7 @@ def test_list():
 def test_custom_objects():
     class ClassWithCustomObjects:
         def get_stuff(
-            self, planes: List[Plane], point: Point, markers: dict[str, Point]
+            self, planes: List[Plane], point: Point, markers: Dict[str, Point]
         ) -> List[str]:
             """
             Gets stuff
@@ -408,7 +409,7 @@ def test_custom_objects():
             Args:
                 planes (List[Plane]): Sample list of planes
                 point (Point): Sample point
-                markers (dict[str, Point]): Sample dictionary of markers
+                markers (Dict[str, Point]): Sample dictionary of markers
 
             Returns:
                 List[str]: Sample list of strings
@@ -657,8 +658,7 @@ def test_execution():
                 str: Sample string
             """
             return simple + "123"
-        
-    
+
     manager = create_manager(ClassToTest())
     assert len(manager.functions) == 1
     function = list(manager.functions.values())[0]
@@ -668,6 +668,7 @@ def test_execution():
 
     result = manager.execute("get_stuff", {"simple": "test"})
     assert result == '"test123"'
+
 
 def test_execution_with_optional():
     class ClassToTest:
@@ -683,8 +684,7 @@ def test_execution_with_optional():
                 str: Sample string
             """
             return f"{simple}{optional}"
-        
-    
+
     manager = create_manager(ClassToTest())
     assert len(manager.functions) == 1
     function = list(manager.functions.values())[0]

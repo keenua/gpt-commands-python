@@ -1,15 +1,15 @@
+import json
+from dataclasses import dataclass
 from enum import Enum
 from logging import getLogger
 from os import getenv
-import json
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
 
-from dotenv import load_dotenv
 from aiohttp import ClientSession, StreamReader
-from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+from dotenv import load_dotenv
 
-from gpt_commands.openai.introspection import Manager, create_manager
+from gpt_commands.introspection import Manager, create_manager
 
 
 class Role(str, Enum):
@@ -50,11 +50,11 @@ class FunctionCall:
 @dataclass
 class FunctionExecution:
     name: str
-    arguments: dict[str, str]
+    arguments: Dict[str, str]
 
     def execute(self, manager: Manager) -> Optional[str]:
         return manager.execute(self.name, self.arguments)
-    
+
     def has_return(self, manager: Manager) -> bool:
         function = manager.get_function(self.name)
         if function is None:
@@ -104,7 +104,12 @@ class ResponseData:
 
     def get_function_execution(self) -> Optional[FunctionExecution]:
         if self.ready and self.function_name and self.function_arguments:
-            arguments = {key: json.dumps(value) for key, value in json.loads(self.function_arguments, strict=False).items()}
+            arguments = {
+                key: json.dumps(value)
+                for key, value in json.loads(
+                    self.function_arguments, strict=False
+                ).items()
+            }
             return FunctionExecution(self.function_name, arguments)
         else:
             return None
@@ -203,7 +208,10 @@ class GPTCommandsClient:
         body = {
             "model": self.model,
             "messages": messages,
-            "functions": [function.json_schema() for function in manager_wrapper.functions.values()],
+            "functions": [
+                function.json_schema()
+                for function in manager_wrapper.functions.values()
+            ],
             "max_tokens": self.max_tokens,
             "n": 1,
             "temperature": self.temperature,
@@ -223,7 +231,9 @@ class GPTCommandsClient:
                     json_data = json.loads(data, strict=False)
 
                     if json_data.get("error"):
-                        raise Exception(f"OpenAI API returned error: {json_data['error']}")
+                        raise Exception(
+                            f"OpenAI API returned error: {json_data['error']}"
+                        )
 
                     chunk: ChatCompletionChunk = ChatCompletionChunk.from_dict(json_data)  # type: ignore
                     processed_chunk = self.__process_chunk(chunk, response)
@@ -250,14 +260,16 @@ class GPTCommandsClient:
                 async for data in self.__send_message(function_result, manager):
                     yield data
 
-    async def chat_stream(self, prompt: str, manager: object) -> AsyncGenerator[str, None]:
+    async def chat_stream(
+        self, prompt: str, manager: object
+    ) -> AsyncGenerator[str, None]:
         """
         Sends a prompt to the OpenAI API and yields the response in chunks
 
         Args:
             prompt: User prompt to send to the API
             manager: The manager object to use for function calls
-        
+
         Yields:
             The response from the API in string chunks
         """

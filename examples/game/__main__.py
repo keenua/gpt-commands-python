@@ -5,8 +5,7 @@ from typing import List, Optional
 
 from dataclasses_jsonschema import JsonSchemaMixin
 
-import gpt_commands.openai.utils
-from gpt_commands.openai import GPTCommandsClient
+from gpt_commands import GPTCommandsClient
 
 
 @dataclass
